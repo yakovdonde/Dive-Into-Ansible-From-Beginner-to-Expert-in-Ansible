@@ -1,0 +1,85 @@
+---
+# YAML documents begin with the document separator ---
+
+# The minus in YAML this indicates a list item.  The playbook contains a list
+# of plays, with each play being a dictionary
+-
+
+  # Hosts: where our play will run and options it will run with
+  hosts: linux
+  vars:
+    packages:
+      - nginx
+      - unzip
+  vars_files:
+    - vars/logos.yaml
+
+  # Vars: variables that will apply to the play, on all target systems
+
+  # Tasks: the list of tasks that will be executed within the play, this section
+  #       can also be used for pre and post tasks
+  tasks:
+    - name: Install EPEL-Release on CentOS servers
+      yum:
+        name: epel-release
+        update_cache: yes
+        state: latest
+      when: ansible_distribution == "CentOS"
+      notify: Message if EPEL successfully installed
+
+    - name: Install required packages on all Linux hosts
+      package:
+        name: "{{ packages }}"
+      notify: Packages successfully installed
+
+    - name: Unarchive Playbook Stacker
+      unarchive:
+        src: playbook_stacker.zip
+        dest: "{{ nginx_root_location }}"
+        mode: 0755
+      notify: Playbook Stacker Unarchived
+
+    - name: Template index.html-easter_egg.j2 to index.html on target
+      template:
+        src: index.html-easter_egg.j2
+        dest: "{{ nginx_root_location }}/index.html"
+        mode: 0644
+      notify: Template task handler
+
+    - name: Restart NGINX service on all host
+      service:
+        name: nginx
+        state: restarted
+      notify: Check HTTP service
+
+
+ # Handlers: the list of handlers that are executed as a notify key from a task
+  handlers:
+    - name: Message if EPEL successfully installed
+      debug:
+        msg: EPEL successfully installed on host
+
+    - name: Packages successfully installed
+      debug:
+        msg: Packages successfully installed on host
+
+    - name: Template task handler
+      debug:
+        msg: Website template was successfully copied
+
+    - name: Playbook Stacker Unarchived
+      debug:
+        msg: Playbook Stacker Unarchived on host
+
+    - name: Check HTTP service
+      uri:
+        url: http://{{ ansible_default_ipv4.address }}
+        status_code: 200
+
+
+
+
+  # Roles: list of roles to be imported into the play
+
+# Three dots indicate the end of a YAML document
+...
